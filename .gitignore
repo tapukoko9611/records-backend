@@ -1,7 +1,0 @@
-/config/passport.js
-/config/template.js
-/utils/auth.js
-constants/
-middleware/
-services/
-.env
