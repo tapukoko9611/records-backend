@@ -4,3 +4,4 @@
 constants/
 middleware/
 services/
+.env
