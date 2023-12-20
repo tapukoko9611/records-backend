@@ -13,6 +13,9 @@ const SupplySchema = mongoose.Schema(
         },
         reference: {
             type: String
+        },
+        date: {
+            type: Date
         }
     },
     {

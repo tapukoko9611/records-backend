@@ -5,21 +5,21 @@ const chalk = require("chalk");
 const keys = require("../config/keys");
 const { database } = keys;
 
-const setupDB = () => {
+const setupDB = async () => {
     try {
-        mongoose.set("useCreateIndex", true);
+        // mongoose.set("useCreateIndex", true);
         mongoose
             .connect(database.url, {
-                useNewUrlParser: true,
-                useUnifiedTopology: true,
-                useFindAndModify: false
+                // useNewUrlParser: true,
+                // useUnifiedTopology: true,
+                // useFindAndModify: false
             })
             .then(() =>
-                console.log(`${chalk.green('✓')} ${chalk.backgroundColorNames('MongoDB Connected!')}`)
+                console.log(`${chalk.green('✓')} ${chalk.blue('MongoDB Connected!')}`)
             )
             .catch(err => console.log(`${chalk.red(err)}`));
     } catch (error) {
-        return null;
+        console.log(error);
     }
 };
 

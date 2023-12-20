@@ -6,6 +6,7 @@ const helmet = require('helmet');
 
 
 const keys = require("./config/keys");
+const routes = require("./routes");
 const setupDB = require("./utils/db");
 
 const { port } = keys;
@@ -22,6 +23,7 @@ app.use(
 app.use(cors());
 
 setupDB();
+app.use(routes);
 
 app.listen(port, () => {
     console.log(
