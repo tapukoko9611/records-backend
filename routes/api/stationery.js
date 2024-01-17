@@ -3,121 +3,97 @@ const router = express.Router();
 
 const Stationery = require("../../models/stationery");
 
-const searchStationery = async ({name, category}) => {
-    const search = await Stationery.findOne({
-        "$and": [
-            {
-                "item.name": name
-            },
-            {
-                "item.category": category
-            }
-        ]
-    });
+const searchStationery = async ({name}) => {
+    const search = await Stationery.findOne({name: name.trim().toUpperCase()});
     return search;
 };
 
 router.post("/add", async (req, res) => {
     try {
-        const { item, quantity, image } = req.body;
-        var fields = item.trim().split(' ');
+        const { name, quantity, image } = req.body;
+        
         if(quantity==0) {
             return res
                 .status(400)
                 .json({ error: 'You must enter a valid quantity' });
         }
-        if(fields.length<2) {
+        if(name.trim().length==0) {
             return res
                 .status(400)
-                .json({ error: 'You must enter a valid item' });
+                .json({ error: 'You must enter a valid item name' });
         }
 
-        var name = fields[0].trim().toUpperCase();
-        var category = fields[1].trim().toUpperCase();
-        var search = await searchStationery({name, category});
+        var search = await searchStationery({name});
         if(search) {
-            console.log("A stationary item already exists");
             return res
                 .status(400)
-                .json({ error: 'A stationary item already exists' });
+                .json({ error: 'A stationary item with this name already exists' });
         }
 
         const stationery = new Stationery({
-            item: {
-                name,
-                category
-            },
+            name: name.trim().toUpperCase(),
             quantity,
             image
         });
         registeredStationery = await stationery.save();
         res.status(200).json({
-            msg: "successfully added stationery",
-            item: registeredStationery.item,
+            msg: "successfully added a stationery item",
+            name: registeredStationery.name,
             quantity: registeredStationery.quantity,
             image: image,
-            id: `${name} ${category}`
         });
 
     } catch (error) {
         console.log(error);
         res.status(400).json({
-            error: "your request could not be processed at the time. Please try again."
+            error: `your request could not be processed at the time. Please try again: ${error}`
         });
     }
 });
 
 router.put("/update", async (req, res) => {
     try {
-        const { item, quantity, image } = req.body;
-        var fields = item.trim().split(' ');
-        if(fields.length<2) {
+        const { name, quantity, image } = req.body;
+
+        if(name.trim().length==0) {
             return res
                 .status(400)
-                .json({ error: 'You must enter a valid item' });
+                .json({ error: 'You must enter a valid item name' });
         }
-
-        var fields = item.trim().split(' ');
         if(quantity==0) {
             return res
                 .status(400)
                 .json({ error: 'You must enter a valid quantity' });
         }
-        if(fields.length<2) {
-            return res
-                .status(400)
-                .json({ error: 'You must enter a valid employee designation' });
-        }
 
-        var name = fields[0].trim().toUpperCase();
-        var category = fields[1].trim().toUpperCase();
-        var search = await searchStationery({name, category});
+        var search = await searchStationery({name});
         if(!search) {
-            console.log("Item does not exist");
             return res
                 .status(400)
                 .json({ error: `Item does not exist` });
         }
+
         if(search.quantity+quantity<0) {
-            console.log("Not suffiecient quantity");
             return res
                 .status(400)
                 .json({ error: `Not sufficient quantity. Available: ${search.quantity}` });
         }
 
         Stationery
-            .findByIdAndUpdate(search._id, {quantity: search.quantity+quantity, image: image})
+            .findByIdAndUpdate(
+                search._id, 
+                {quantity: search.quantity+quantity, image: image})
             .then(() => res.status(200).json({
                 msg: "successfully updated stationery",
-                item: search.item,
+                name: search.name,
                 quantity: search.quantity+quantity,
-                id: `${name} ${category}`
+                image: image
             }))
             .catch(err => console.log(err));
     } catch (error) {
         console.log(error);
         res.status(400).json({
-            error: "your request could not be processed at the time. Please try again."
+            error: `your request could not be processed at the time. Please try again: ${error}`
         });
     }
 });

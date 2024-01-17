@@ -7,28 +7,14 @@ const Stationery = require("../../models/stationery"); 123
 
 router.get("/employee/:emp", async (req, res) => {
     const search = await Employee.find({
-        "$or": [
-            {
-                "employee.designation": {$regex: '.*' + emp + '.*'}
-            },
-            {
-                "employee.name": {$regex: '.*' + emp + '.*'}
-            }
-        ]
+        designation: {$regex: '.*' + emp.trim().toUppercase() + '.*'}
     });
     return search;
 });
 
 router.get("/stationery/:item", async (req, res) => {
     const search = await Stationery.find({
-        "$or": [
-            {
-                "item.name": {$regex: '.*' + item + '.*'}
-            },
-            {
-                "item.category": {$regex: '.*' + item + '.*'}
-            }
-        ]
+        name: {$regex: '.*' + item.trim().toUppercase() + '.*'}
     });
     return search;
 });

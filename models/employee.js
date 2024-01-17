@@ -4,18 +4,10 @@ const EmployeeSchema = new mongoose.Schema({
     name: {
         type: String
     },
-    // designation: {
-    //     section: {
-    //         type: String
-    //     },
-    //     number: {
-    //         type: String
-    //     }
-    // }
     designation: {
         type: String
     },
-    id: {
+    identity: {
         type: String
     }
 });

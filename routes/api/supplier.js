@@ -1,42 +1,42 @@
 const express = require("express");
 const router = express.Router();
 
-const Employee = require("../../models/employee");
+const Supplier = require("../../models/supplier");
 
-const searchEmployee = async ({designation}) => {
-    const search = await Employee.findOne({designation: designation.trim().toUpperCase()});
+const searchSupplier = async ({organization}) => {
+    const search = await Supplier.findOne({organization: organization.trim().toUpperCase()});
     return search;
 };
 
 router.post("/add", async (req, res) => {
     try {
-        const { name, designation, identity } = req.body;
+        const { name, organization, identity } = req.body;
 
         name = name.toUpperCase();
-        if(name.trim().length==0 || designation.trim().length==0) {
+        if(name.trim().length==0 || organization.trim().length==0) {
             return res
                 .status(400)
                 .json({ error: 'You must enter valid details' });
         }
 
-        var search = await searchEmployee({designation});
+        var search = await searchSupplier({organization});
         if(search) {
             return res
                 .status(400)
-                .json({ error: 'An employee with that credential already exists' });
+                .json({ error: 'A Supplier with that credential already exists' });
         }
 
-        const employee = new Employee({
+        const supplier = new Supplier({
             name: name.trim().toUpperCase(), 
-            designation: designation.trim().toUpperCase(),
+            organization: organization.trim().toUpperCase(),
             identity
         });
-        registeredEmployee = await employee.save();
+        registeredSupplier = await supplier.save();
         res.status(200).json({
-            msg: "Successfully added an employee",
-            name: registeredEmployee.name,
-            designation: registeredEmployee.designation,
-            identity: registeredEmployee.identity
+            msg: "Successfully added an Supplier",
+            name: registeredSupplier.name,
+            organization: registeredSupplier.organization,
+            identity: registeredSupplier.identity
         });
 
     } catch (error) {
@@ -48,24 +48,24 @@ router.post("/add", async (req, res) => {
 
 router.delete("/delete", async (req, res) => {
     try {
-        const { designation } = req.body;
+        const { organization } = req.body;
 
-        if(designation.trim().length==0) {
+        if(organization.trim().length==0) {
             return res
                 .status(400)
                 .json({ error: 'You must enter valid details' });
         }
 
-        var search = await searchEmployee({designation});
+        var search = await searchSupplier({organization});
         if(!search) {
             return res
                 .status(400)
-                .json({ error: 'Employee with that credential does not exist' });
+                .json({ error: 'Supplier with that credential does not exist' });
         }
 
-        Employee
+        Supplier
             .findByIdAndDelete(search._id)
-            .then(() => res.status(200).json({"msg": "successfully deleted employee"}))
+            .then(() => res.status(200).json({"msg": "successfully deleted Supplier"}))
             .catch(err => console.log(err));
     } catch (error) {
         res.status(400).json({
@@ -76,30 +76,30 @@ router.delete("/delete", async (req, res) => {
 
 router.put("/update", async (req, res) => {
     try {
-        const { name, designation, identity } = req.body;
+        const { name, organization, identity } = req.body;
 
         name = name.toUpperCase();
-        if(name.trim().length==0 || designation.trim().length==0) {
+        if(name.trim().length==0 || organization.trim().length==0) {
             return res
                 .status(400)
-                .json({ error: 'You must enter valid employee details' });
+                .json({ error: 'You must enter valid Supplier details' });
         }
 
-        var search = await searchEmployee({designation});
+        var search = await searchSupplier({organization});
         if(!search) {
             return res
                 .status(400)
-                .json({ error: 'Employee with that credential does not exist' });
+                .json({ error: 'Supplier with that credential does not exist' });
         }
 
-        Employee
+        Supplier
             .findByIdAndUpdate(
                 search._id, 
                 {name: name.trim().toUpperCase(), identity: identity})
             .then(() => res.status(200).json({
-                "msg": "successfully updated employee",
+                "msg": "successfully updated Supplier",
                 name: name,
-                designation: search.designation,
+                organization: search.organization,
                 identity: search.identity
             }))
             .catch(err => console.log(err));

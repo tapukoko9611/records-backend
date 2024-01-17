@@ -7,7 +7,7 @@ const SupplierSchema = new mongoose.Schema({
     organization: {
         type: String
     },
-    id: {
+    identity: {
         type: String
     }
 });

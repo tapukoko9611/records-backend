@@ -1,14 +1,6 @@
 const mongoose = require("mongoose");
 
 const TransactionSchema = mongoose.Schema({
-    // item: {
-    //     name: {
-    //         type: String
-    //     },
-    //     category: {
-    //         type: String
-    //     }
-    // },
     item: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Stationery"

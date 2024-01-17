@@ -1,14 +1,6 @@
 const mongoose = require("mongoose");
 
 const StationerySchema = mongoose.Schema({
-    // item: {
-    //     name: {
-    //         type: String
-    //     },
-    //     category: {
-    //         type: String
-    //     }
-    // },
     name: {
         type: String
     },

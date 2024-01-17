@@ -2,116 +2,84 @@ const express = require("express");
 const router = express.Router();
 
 const Employee = require("../../models/employee");
+const Supplier = require("../../models/supplier");
 const Stationery = require("../../models/stationery");
 const Demand = require("../../models/demand");
 const Supply = require("../../models/supply");
 const Transaction = require("../../models/transaction");
 
-const searchStationery = async ({name, category}) => {
-    const search = await Stationery.findOne({
-        "$and": [
-            {
-                "item.name": name
-            },
-            {
-                "item.category": category
-            }
-        ]
-    });
+const searchStationery = async ({name}) => {
+    const search = await Stationery.findOne({name: name.trim().toUpperCase()});
     return search;
 };
 
-const searchEmployee = async ({section, number}) => {
-    const search = await Employee.findOne({
-        "$and": [
-            {
-                "designation.section": section
-            },
-            {
-                "designation.number": number
-            }
-        ]
-    });
+const searchEmployee = async ({designation}) => {
+    const search = await Employee.findOne({designation: designation.trim().toUpperCase()});
     return search;
 };
 
-const handleTransaction = async ({element, type, reference}) => {
-    // try {
-        // list.forEach(async element => {
-            // console.log(element);
-            const {item, quantity} = element;
-            // console.log(item, quantity);
-            var fields = item.trim().split(' ');
-            if(quantity==0) {
-                throw new Error("You must enter a valid quantity");
-            }
-            if(fields.length<2) {
-                throw new Error("You must enter a valid item");
-            }
+const searchSupplier = async ({organization}) => {
+    const search = await Supplier.findOne({organization: organization.trim().toUpperCase()});
+    return search;
+};
 
-            var name = fields[0].trim().toUpperCase();
-            var category = fields[1].trim().toUpperCase();
-            var search = await searchStationery({name, category});
-            if(!search) {
-                if(type==="DEMAND") return("Item does not exist");
-                if(type==="SUPPLY") {
-                    const stationery = new Stationery({
-                        item: {
-                            name,
-                            category
-                        },
-                        quantity: 0
-                    });
-                    stationery
-                        .save()
-                        .then(() => console.log("New stationary item created"))
-                        .catch(err => console.log(err));
-                    search = stationery;
-                }
-            }
-            
-            if(search.quantity+quantity<0) {
-                return(`Not sufficient quantity. Available: ${search.quantity}`);
-            }
+const handleTransaction = async ({item, type, reference}) => {
+    const {name, quantity, remarks} = item;
+    
+    if(quantity==0) {
+        throw new Error("You must enter a valid quantity");
+    }
+    if(name.trim().length==0) {
+        throw new Error("You must enter a valid item");
+    }
 
-            Stationery
-                .findByIdAndUpdate(search._id, {quantity: search.quantity+quantity})
-                .then(async () => {
-                    const transaction = new Transaction({
-                        item: {
-                            name,
-                            category
-                        },
-                        quantity: quantity,
-                        type: type,
-                        reference: reference
-                    });
-                    await 
-                        transaction
-                            .save()
-                            .then(() => console.log("Successful transaction"))
-                            .catch(err => console.log(`err at transaction: ${err}`));
-                })
-                .catch(err => console.log(`err at stationery: ${err}`));
+    var search = await searchStationery({name});
+    if(!search) {
+        if(type==="DEMAND") return("Item does not exist");
+        if(type==="SUPPLY") {
+            const stationery = new Stationery({
+                name: name.trim().toUpperCase(),
+                quantity: 0
+            });
+            stationery
+                .save()
+                .then(() => console.log("New stationary item created"))
+                .catch(err => console.log(err));
+            search = stationery;
+        }
+    }
+    
+    if(search.quantity+quantity<0) {
+        return(`Not sufficient quantity. Available: ${search.quantity}`);
+    }
 
-            return "SUCCESSFUL";
-        // })
-        // .catch(err => {
-        //     console.log("ffff");
-        //     console.log(err); });
-    // } catch (error) {
-    //     return error;
-    // }
+    Stationery
+        .findByIdAndUpdate(
+            search._id, 
+            {quantity: search.quantity+quantity})
+        .then(async () => {
+            const transaction = new Transaction({
+                item: await Stationery.find({name: name.trim().toUpperCase()}),
+                quantity: quantity,
+                type: type.trim().toUpperCase(),
+                reference: reference,
+                remarks: remarks.trim().toUpperCase()
+            });
+            await transaction
+                .save()
+                .then(() => console.log("Successful transaction"))
+                .catch(err => console.log(`err at transaction: ${err}`));
+        })
+        .catch(err => console.log(`err at stationery: ${err}`));
+
+    return "SUCCESSFUL";
 };
 
 router.post("/demand", async (req, res) => {
     try {
-        const { designation, reference, list, image, date } = req.body;
+        const { designation, reference, list, image, date, remarks } = req.body;
 
-        var fields = designation.trim().split(' ');
-        var section = fields[0].toUpperCase();
-        var number = `${parseInt(fields[1])}`;
-        var emp = await searchEmployee({section, number});
+        var emp = await searchEmployee({designation});
         if(!emp) {
             console.log("Employee with that credential does not exist");
             return res
@@ -120,21 +88,22 @@ router.post("/demand", async (req, res) => {
         }
 
         const demand = new Demand({
-            employee: emp._id,
+            employee: emp,
             image: image,
             reference: reference,
-            date: date===""? Date.now(): date
+            date: date===""? Date.now(): date,
+            remarks: remarks.trim().toUpperCase()
         });
         registerDemand = await demand.save();
 
         const ref = {
-            demand: registerDemand._id,
+            demand: registerDemand,
             supply: null
         }
         type = "DEMAND";
 
-        for(element of list) {
-            var result = await handleTransaction({element, type, reference: ref});
+        for(item of list) {
+            var result = await handleTransaction({item, type, reference: ref});
             if (result !== "SUCCESSFUL") {
                 throw new Error(result);
             } 
@@ -157,7 +126,6 @@ router.post("/demand", async (req, res) => {
         //     res.status(400).json({"msg": err});
         // }
     } catch (error) {
-        console.log(error);
         res.status(400).json({
             error: `your request could not be processed at the time. Please try again. error: ${error}`
         });
@@ -166,25 +134,36 @@ router.post("/demand", async (req, res) => {
 
 router.post("/supply", async (req, res) => {
     try {
-        const { supplier, reference, list, image, price, date } = req.body;
+        const { organization, reference, list, image, price, date } = req.body;
+
+        var supplier = await searchSupplier({organization});
+        if(!supplier) {
+            sup = new Supplier({
+                name: organization,
+                organization: organization
+            });
+            var registerSupplier = await sup.save();
+            supplier = registerSupplier;
+        }
 
         const supply = new Supply({
             supplier: supplier,
             image: image,
             price: price,
             reference: reference,
-            date: date===""? Date.now(): date
+            date: date===""? Date.now(): date,
+            remarks: remarks.trim().toUpperCase()
         });
-        registerSupply = await supply.save();
+        var registerSupply = await supply.save();
 
         const ref = {
             demand: null,
-            supply: registerSupply._id
+            supply: registerSupply
         }
         type = "SUPPLY";
 
-        for(element of list) {
-            var result = await handleTransaction({element, type, reference: ref});
+        for(item of list) {
+            var result = await handleTransaction({item, type, reference: ref});
             if (result !== "SUCCESSFUL") {
                 throw new Error(result);
             } 
