@@ -41,9 +41,9 @@ const handleTransaction = async ({item, type, reference}) => {
                 name: name.trim().toUpperCase(),
                 quantity: 0
             });
-            stationery
+            await stationery
                 .save()
-                .then(() => console.log("New stationary item created"))
+                // .then(() => console.log("New stationary item created"))
                 .catch(err => console.log(err));
             search = stationery;
         }
@@ -59,15 +59,15 @@ const handleTransaction = async ({item, type, reference}) => {
             {quantity: search.quantity+quantity})
         .then(async () => {
             const transaction = new Transaction({
-                item: await Stationery.find({name: name.trim().toUpperCase()}),
+                item: search,
                 quantity: quantity,
-                type: type.trim().toUpperCase(),
+                type: type,
                 reference: reference,
-                remarks: remarks.trim().toUpperCase()
+                remarks: remarks
             });
             await transaction
                 .save()
-                .then(() => console.log("Successful transaction"))
+                // .then(() => console.log("Successful transaction"))
                 .catch(err => console.log(`err at transaction: ${err}`));
         })
         .catch(err => console.log(`err at stationery: ${err}`));
@@ -92,7 +92,7 @@ router.post("/demand", async (req, res) => {
             image: image,
             reference: reference,
             date: date===""? Date.now(): date,
-            remarks: remarks.trim().toUpperCase()
+            remarks: remarks
         });
         registerDemand = await demand.save();
 
@@ -126,6 +126,7 @@ router.post("/demand", async (req, res) => {
         //     res.status(400).json({"msg": err});
         // }
     } catch (error) {
+        console.log(error);
         res.status(400).json({
             error: `your request could not be processed at the time. Please try again. error: ${error}`
         });
@@ -134,13 +135,13 @@ router.post("/demand", async (req, res) => {
 
 router.post("/supply", async (req, res) => {
     try {
-        const { organization, reference, list, image, price, date } = req.body;
+        const { organization, reference, list, image, price, date, remarks } = req.body;
 
         var supplier = await searchSupplier({organization});
         if(!supplier) {
             sup = new Supplier({
-                name: organization,
-                organization: organization
+                name: organization.trim().toUpperCase(),
+                organization: organization.trim().toUpperCase()
             });
             var registerSupplier = await sup.save();
             supplier = registerSupplier;
@@ -152,7 +153,7 @@ router.post("/supply", async (req, res) => {
             price: price,
             reference: reference,
             date: date===""? Date.now(): date,
-            remarks: remarks.trim().toUpperCase()
+            remarks: remarks
         });
         var registerSupply = await supply.save();
 

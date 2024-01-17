@@ -12,7 +12,6 @@ router.post("/add", async (req, res) => {
     try {
         const { name, designation, identity } = req.body;
 
-        name = name.toUpperCase();
         if(name.trim().length==0 || designation.trim().length==0) {
             return res
                 .status(400)
@@ -78,7 +77,6 @@ router.put("/update", async (req, res) => {
     try {
         const { name, designation, identity } = req.body;
 
-        name = name.toUpperCase();
         if(name.trim().length==0 || designation.trim().length==0) {
             return res
                 .status(400)
