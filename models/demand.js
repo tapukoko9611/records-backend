@@ -14,6 +14,9 @@ const DemandSchema = mongoose.Schema(
         },
         date: {
             type: Date
+        },
+        remarks: {
+            type: String
         }
     },
     {

@@ -1,19 +1,26 @@
 const mongoose = require("mongoose");
 
 const TransactionSchema = mongoose.Schema({
+    // item: {
+    //     name: {
+    //         type: String
+    //     },
+    //     category: {
+    //         type: String
+    //     }
+    // },
     item: {
-        name: {
-            type: String
-        },
-        category: {
-            type: String
-        }
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Stationery"
     },
     quantity: {
         type: Number
     },
     type: {
         type: String,
+    },
+    remarks: {
+        type: String
     },
     reference: {
         demand: {

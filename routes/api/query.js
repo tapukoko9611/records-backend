@@ -35,9 +35,46 @@ const searchEmployee = async ({section, number}) => {
     return search;
 };
 
-router.get("/employee/:designation", async(req, res) => {
+// router.get("/employee/:designation", async(req, res) => {
+//     // particular employee with all transactions of his, listed (with demand) wrt date
+//     const {designation} = req.params;
+//     var fields = designation.trim().split(' ');
+//     var section = fields[0].toUpperCase();
+//     var number = `${parseInt(fields[1])}`;
+//     var employee = await searchEmployee({section, number});
+//     if(!employee) {
+//         console.log("Employee with that credential does not exist");
+//         return res
+//             .status(400)
+//             .json({ error: 'Employee with that credential does not exist' });
+//     }
+//     try {
+//         var demands = await Demand.find({employee: employee}).sort({date: -1}).select({updatedAt: 0, createdAt: 0, employee: 0, __v: 0});
+
+//         for(var i=0; i<demands.length; i++) {
+//             var transactions = await Transaction
+//                                         .find({"$and": [{"type": "DEMAND"}, {"reference.demand": demands[i]}]})
+//                                         .select({item: 1, quantity: 1})
+//             console.log(transactions);
+//             demands[i] = {...demands[i]._doc, list: transactions};
+//             // console.log("--------------------------------------------------------------------------");
+//             // console.log(demands[i]);
+//         }
+//         // demands.map(async element => {
+//         //     var transactions = await Transaction.find({"$and": [{"type": "DEMAND"}, {"reference.demand": element}]});
+//         //     console.log(transactions);
+//         //     return {...element, list: transactions}
+//         // });
+
+//         res.status(200).json({...employee._doc, demands: demands});
+//     } catch (err) {
+//         res.status(400).json({"msg": err});
+//     }
+// });
+
+router.get("/employee/:designation&:type", async(req, res) => {
     // particular employee with all transactions of his, listed (with demand) wrt date
-    const {designation} = req.params;
+    const {designation, type} = req.params;
     var fields = designation.trim().split(' ');
     var section = fields[0].toUpperCase();
     var number = `${parseInt(fields[1])}`;
@@ -48,27 +85,99 @@ router.get("/employee/:designation", async(req, res) => {
             .status(400)
             .json({ error: 'Employee with that credential does not exist' });
     }
-    try {
-        var demands = await Demand.find({employee: employee}).sort({date: -1}).select({updatedAt: 0, createdAt: 0, employee: 0, __v: 0});
+    // res.status(200).json({designation: designation, type: type});
+    if(type=="DATE_WISE") {
+        try {
+            var demands = await Demand.find({employee: employee}).sort({date: -1}).select({updatedAt: 0, createdAt: 0, employee: 0, __v: 0});
 
-        for(var i=0; i<demands.length; i++) {
-            var transactions = await Transaction
-                                        .find({"$and": [{"type": "DEMAND"}, {"reference.demand": demands[i]}]})
-                                        .select({item: 1, quantity: 1})
-            console.log(transactions);
-            demands[i] = {...demands[i]._doc, list: transactions};
-            // console.log("--------------------------------------------------------------------------");
-            // console.log(demands[i]);
+            for(var i=0; i<demands.length; i++) {
+                var transactions = await Transaction
+                                            .find({"$and": [{"type": "DEMAND"}, {"reference.demand": demands[i]}]})
+                                            .select({item: 1, quantity: 1})
+                console.log(transactions);
+                demands[i] = {...demands[i]._doc, list: transactions};
+                // console.log("--------------------------------------------------------------------------");
+                // console.log(demands[i]);
+            }
+            // demands.map(async element => {
+            //     var transactions = await Transaction.find({"$and": [{"type": "DEMAND"}, {"reference.demand": element}]});
+            //     console.log(transactions);
+            //     return {...element, list: transactions}
+            // });
+
+            res.status(200).json({...employee._doc, demands: demands});
+        } catch (err) {
+            res.status(400).json({"msg": err});
         }
-        // demands.map(async element => {
-        //     var transactions = await Transaction.find({"$and": [{"type": "DEMAND"}, {"reference.demand": element}]});
-        //     console.log(transactions);
-        //     return {...element, list: transactions}
-        // });
-
-        res.status(200).json({...employee._doc, demands: demands});
-    } catch (err) {
-        res.status(400).json({"msg": err});
+    }
+    else {
+        try{
+            var answer = {};
+            // await Demand
+            //     .find({employee: employee})
+            //     .then((docs) => {
+            //         console.log(docs);
+            //     })
+            answer = Demand
+                .find({employee: employee})
+                .then((demands) => {
+                    var ans = {}
+                    // console.log(demands);
+                    demands.map(async (demand) => {
+                        // console.log(ans);
+                        // console.log("-----------------------------------------");
+                        Transaction
+                            .find({"reference.demand": demand})
+                            .then((transactions) => {
+                                // console.log(transactions);
+                                transactions.map((transaction) => {
+                                    var done=false;
+                                    for (let i in ans) {
+                                        if(i===`${transaction.item.name} ${transaction.item.category}`) {
+                                            // ans[i] = [
+                                            //     ...ans[i], {
+                                            //     "quantity": transaction.quantity,
+                                            //     "date": demand.date
+                                            // }];
+                                            console.log("changing");
+                                            ans[i] = {
+                                                quantity: ans[i].quantity+transaction.quantity,
+                                                transactions: [
+                                                    ...ans[i].transactions,
+                                                    {
+                                                        "quantity": transaction.quantity,
+                                                        "date": demand.date
+                                                    }
+                                                ]
+                                            }
+                                            // console.log(ans);
+                                            done=true;
+                                        }
+                                    }
+                                    if(done===false) {
+                                        console.log("adding");
+                                        ans[`${transaction.item.name} ${transaction.item.category}`] = {
+                                            quantity: transaction.quantity,
+                                            transactions: [
+                                                {
+                                                    "quantity": transaction.quantity,
+                                                    "date": demand.date
+                                                }
+                                            ]
+                                        }
+                                        // console.log(ans);
+                                    }
+                                    done=false;
+                                });
+                            });
+                    });
+                    console.log(ans);
+                    return ans;
+            });
+            res.status(200).json({...employee._doc, demands: answer});
+        } catch (err) {
+            res.status(400).json({"msg": err});
+        }
     }
 });
 

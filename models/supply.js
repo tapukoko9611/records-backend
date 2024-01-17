@@ -3,19 +3,23 @@ const mongoose = require("mongoose");
 const SupplySchema = mongoose.Schema(
     {
         supplier: {
-            type: String,
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Supplier"
         },
         image: {
             type: String
-        },
-        price: {
-            type: Number
         },
         reference: {
             type: String
         },
         date: {
             type: Date
+        },
+        remarks: {
+            type: String
+        },
+        price: {
+            type: Number
         }
     },
     {
