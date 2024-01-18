@@ -91,7 +91,7 @@ router.post("/demand", async (req, res) => {
             employee: emp,
             image: image,
             reference: reference,
-            date: date===""? Date.now(): date,
+            date: date && date!=""? date: Date.now(),
             remarks: remarks
         });
         registerDemand = await demand.save();
@@ -152,7 +152,7 @@ router.post("/supply", async (req, res) => {
             image: image,
             price: price,
             reference: reference,
-            date: date===""? Date.now(): date,
+            date: date && date!=""? date: Date.now(),
             remarks: remarks
         });
         var registerSupply = await supply.save();
