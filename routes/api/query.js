@@ -162,6 +162,7 @@ router.get("/employee/:designation&:type", async(req, res) => {
 router.get("/employee", async(req, res) => {
     // get list of all employees with each of them having their total no.of transactions (today, this week, this month, all time)
     try{
+        console.log("Called");
         var employees = await Employee.find();
         // console.log(employees);
         for(var i=0; i<employees.length; i++) {
