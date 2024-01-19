@@ -33,9 +33,11 @@ router.post("/add", async (req, res) => {
         registeredEmployee = await employee.save();
         res.status(200).json({
             msg: "Successfully added an employee",
+            _id: registeredEmployee._id,
             name: registeredEmployee.name,
             designation: registeredEmployee.designation,
-            identity: registeredEmployee.identity
+            identity: registeredEmployee.identity,
+            count: [0, 0, 0]
         });
 
     } catch (error) {
