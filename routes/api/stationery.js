@@ -41,6 +41,8 @@ router.post("/add", async (req, res) => {
             name: registeredStationery.name,
             quantity: registeredStationery.quantity,
             image: image,
+            demand: [0, 0, 0],
+            supply: [quantity, quantity, quantity]
         });
 
     } catch (error) {
