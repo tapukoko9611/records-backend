@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 
+const { format } = require('date-fns');
+
 const Employee = require("../../models/employee");
 const Supplier = require("../../models/supplier");
 const Stationery = require("../../models/stationery");
@@ -448,6 +450,43 @@ router.get("/stationery", async(req, res) => {
     }
 });
 
+router.get("/transaction", async (req, res) => {
+    try {
+        var demands = await Demand.find();
+        for (let i=0; i<demands.length; i++) {
+            var demand = demands[i]._doc;
+            var transactions = await Transaction.find({"$and": [{"type": "DEMAND", "reference.demand": demand}]}).populate("item");
+            var employee = await Employee.findById(demand.employee);
+            demand = {
+                ...demand,
+                employee: employee,
+                transactions: transactions
+            };
+            demands[i] = demand;
+        }
+        console.log(demands);
+
+        var supplies = await Supply.find();
+        for (let i=0; i<supplies.length; i++) {
+            var supply = supplies[i]._doc;
+            var transactions = await Transaction.find({"$and": [{"type": "SUPPLY", "reference.supply": supply}]}).populate("item");
+            var supplier = await Supplier.findById(supply.supplier);
+            supply = {
+                ...supply,
+                supplier: supplier,
+                transactions: transactions
+            };
+            supplies[i] = supply;
+        }
+
+        // console.log([...demands, ...supplies]);
+
+        return res.status(200).json([...demands, ...supplies]);
+    } catch (err) {
+        res.status(400).json({"msg": err.message});
+    }
+})
+
 router.get("/transaction/:transactionDetails", async(req, res) => {
     // get all supply or demand transactions (filled)
     const {transactionDetails} = req.params;
@@ -488,17 +527,588 @@ router.get("/transaction/:transactionDetails", async(req, res) => {
     }
 });
 
-router.get("/transaction", async(req, res) => {
+router.get("/transactions/:type", async(req, res) => {
+    const {type} = req.params;
     // get all supply and demand transactions (filled)
-    try {
-        var demand = await Demand.find().populate("employee");
-        var supply = await Supply.find().populate("supplier");
-        // console.log(transaction);
+    if (type=="EMP_WISE") {
+        try {
+            var demands = await Demand.find().populate("employee");
+            var supplies = await Supply.find().populate("supplier");
 
-        // var transactions = await Transaction.find({"$and": [{"$or": [{"reference.demand": transaction._id}, {"reference.supply": transaction._id}]}, {"type": type}]});
-        res.status(200).json({supply: supply, demand: demand});
-    } catch (err) {
-        res.status(400).json({"msg": err});
+            var ans = {};
+
+            for (let i=0; i<demands.length; i++) {
+                var demand = demands[i]._doc;
+                demand = {
+                    ...demand,
+                    date: format(demand.date, 'MM/dd/yyyy')
+                }
+                var doneDate = false;
+                for (let date in ans) {
+                    if (date == demand.date) {
+                        // console.log(`changing date: ${date}`);
+                        doneDate = true;
+                        var transactions = await Transaction.find({"$and": [{"type": "DEMAND"}, {"reference.demand": demand}]});
+                        // console.log(transactions.length);
+                        for (let j=0; j<transactions.length; j++) {
+                            var transaction = transactions[j];
+                            var doneEmployee = false;
+                            var item_name = await Stationery.findById(transaction.item).select("name");
+                            for (let employee in ans[date].demand) {
+                                if (employee == demand.employee.designation) {
+                                    doneEmployee = true;
+                                    ans[date].demand[employee] = {
+                                        reference: demand.reference,
+                                        transactions: [
+                                            ...ans[date].demand[employee].transactions,
+                                            {
+                                                item: item_name.name,
+                                                quantity: transaction.quantity
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                            if (doneEmployee == false && demand.employee) {
+                                ans[date].demand[demand.employee.designation] = {
+                                    reference: demand.reference,
+                                    transactions: [
+                                        {
+                                            item: item_name.name,
+                                            quantity: transaction.quantity
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+                if (doneDate == false) {
+                    // console.log(`adding date: ${demand.date}`);
+                    ans[demand.date] = {
+                        demand: {},
+                        supply: {}
+                    };
+                    var transactions = await Transaction.find({"$and": [{"type": "DEMAND"}, {"reference.demand": demand}]});
+                    // console.log(transactions.length);
+                    for (let j=0; j<transactions.length; j++) {
+                        var transaction = transactions[j];
+                        var doneEmployee = false;   
+                        var item_name = await Stationery.findById(transaction.item).select("name");
+                        for (let employee in ans[date].demand) {
+                            if (employee == demand.employee.designation) {
+                                doneEmployee = true;
+                                ans[date].demand[employee] = {
+                                    reference: demand.reference,
+                                    transactions: [
+                                        ...ans[date].demand[employee].transactions,
+                                        {
+                                            item: item_name.name,
+                                            quantity: transaction.quantity
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                        if (doneEmployee == false && demand.employee) {
+                            // console.log("Adding employee");
+                            ans[date].demand[demand.employee.designation] = {
+                                reference: demand.reference,
+                                transactions: [
+                                    {
+                                        item: item_name.name,
+                                        quantity: transaction.quantity
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            for (let i=0; i<supplies.length; i++) {
+                var supply = supplies[i]._doc;
+                supply = {
+                    ...supply,
+                    date: format(supply.date, 'MM/dd/yyyy')
+                }
+                var doneDate = false;
+                for (let date in ans) {
+                    if (date == supply.date) {
+                        // console.log(`changing date: ${date}`);
+                        doneDate = true;
+                        var transactions = await Transaction.find({"$and": [{"type": "SUPPLY"}, {"reference.supply": supply}]});
+                        // console.log(transactions.length);
+                        for (let j=0; j<transactions.length; j++) {
+                            var transaction = transactions[j];
+                            var doneSupplier = false;
+                            var item_name = await Stationery.findById(transaction.item).select("name");
+                            for (let supplier in ans[date].supply) {
+                                if (supplier == supply.supplier.organization) {
+                                    doneSupplier = true;
+                                    ans[date].supply[supplier] = {
+                                        reference: supply.reference,
+                                        transactions: [
+                                            ...ans[date].supply[supplier].transactions,
+                                            {
+                                                item: item_name.name,
+                                                quantity: transaction.quantity
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                            if (doneSupplier == false && supply.supplier) {
+                                ans[date].supply[supply.supplier.organization] = {
+                                    reference: supply.reference,
+                                    transactions: [
+                                        {
+                                            item: item_name.name,
+                                            quantity: transaction.quantity
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+                if (doneDate == false) {
+                    // console.log(`adding date: ${supply.date}`);
+                    ans[supply.date] = {
+                        supply: {},
+                        demand: {}
+                    };
+                    var transactions = await Transaction.find({"$and": [{"type": "SUPPLY"}, {"reference.supply": supply}]});
+                    // console.log(transactions.length);
+                    for (let j=0; j<transactions.length; j++) {
+                        var transaction = transactions[j];
+                        var doneSupplier = false;   
+                        var item_name = await Stationery.findById(transaction.item).select("name");
+                        for (let supplier in ans[date].supply) {
+                            if (supplier == supply.supplier.organization) {
+                                doneSupplier = true;
+                                ans[date].supply[supplier] = {
+                                    reference: supply.reference,
+                                    transactions: [
+                                        ...ans[date].supply[supplier].transactions,
+                                        {
+                                            item: item_name.name,
+                                            quantity: transaction.quantity
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                        if (doneSupplier == false && supply.supplier) {
+                            // console.log("Adding supplier");
+                            ans[date].supply[supply.supplier.organization] = {
+                                reference: demand.reference,
+                                transactions: [
+                                    {
+                                        item: item_name.name,
+                                        quantity: transaction.quantity
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+                // console.log(ans);
+            }
+
+            // ans =  {
+            //     date1: {
+            //         supply: {
+            //             emp1: {
+            //                 reference: reference,
+            //                 transactions: [
+            //                     {
+            //                         item: item,
+            //                         quantity: quantity,
+            //                     }
+            //                 ]
+            //             },
+            //             stationery2: {
+            //                 quantity: int,
+            //                 transactions: [
+            //                     {
+            //                         emp: emp,
+            //                         reference: reference,
+            //                         quantity: quantity,
+            //                     }
+            //                 ]
+            //             }
+            //         },
+            //         demand: {
+            //             stationery1: {
+            //                 quantity: int,
+            //                 transactions: [
+            //                     {
+            //                         supplier: supplier,
+            //                         reference: reference,
+            //                         quantity: quantity,
+            //                     }
+            //                 ]
+            //             },
+            //             stationery2: {
+            //                 quantity: int,
+            //                 transactions: [
+            //                     {
+            //                         emp: emp,
+            //                         reference: reference,
+            //                         quantity: quantity,
+            //                     }
+            //                 ]
+            //             }
+            //         }
+            //     },
+            //     date2: {
+            //         supply: {
+            //             stationery1: {
+            //                 quantity: int,
+            //                 transactions: [
+            //                     {
+            //                         emp: emp,
+            //                         reference: reference,
+            //                         quantity: quantity,
+            //                     }
+            //                 ]
+            //             },
+            //             stationery2: {
+            //                 quantity: int,
+            //                 transactions: [
+            //                     {
+            //                         emp: emp,
+            //                         reference: reference,
+            //                         quantity: quantity,
+            //                     }
+            //                 ]
+            //             }
+            //         },
+            //         demand: {}
+            //     },
+            //     date3: {
+            //         supply: {
+            //             stationery1: {
+            //                 quantity: int,
+            //                 transactions: [
+            //                     {
+            //                         emp: emp,
+            //                         reference: reference,
+            //                         quantity: quantity,
+            //                     }
+            //                 ]
+            //             },
+            //             stationery2: {
+            //                 quantity: int,
+            //                 transactions: [
+            //                     {
+            //                         emp: emp,
+            //                         reference: reference,
+            //                         quantity: quantity,
+            //                     }
+            //                 ]
+            //             }
+            //         },
+            //         demand: {}
+            //     }
+            // }
+
+            res.status(200).json({ans: ans});
+        } catch (err) {
+            res.status(400).json({"msg": err});
+        }
+    }
+    else {
+        try {
+            var demands = await Demand.find().populate("employee");
+            var supplies = await Supply.find().populate("supplier");
+
+            var ans = {};
+            
+            for (let i=0; i<demands.length; i++) {
+                var demand = demands[i]._doc;
+                demand = {
+                    ...demand,
+                    date: format(demand.date, 'MM/dd/yyyy')
+                }
+                var doneDate = false;
+                for (let date in ans) {
+                    if (date == demand.date) {
+                        doneDate = true;
+                        var transactions = await Transaction.find({"$and": [{"type": "DEMAND"}, {"reference.demand": demand}]});
+                        for (let j=0; j<transactions.length; j++) {
+                            var transaction = transactions[j];
+                            var doneItem = false;
+                            var item_name = await Stationery.findById(transaction.item).select("name");
+                            for (let item in ans[date].demand) {
+                                if (item == item_name.name) {
+                                    doneItem = true;
+                                    ans[date].demand[item] = {
+                                        quantity: ans[date].demand[item].quantity+transaction.quantity,
+                                        transactions: [
+                                            ...ans[date].demand[item].transactions,
+                                            {
+                                                employee: demand.employee.designation,
+                                                reference: demand.reference,
+                                                quantity: transaction.quantity
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                            if (doneItem == false && demand.employee) {
+                                ans[date].demand[item_name.name] = {
+                                    quantity: transaction.quantity,
+                                    transactions: [
+                                        {
+                                            employee: demand.employee.designation,
+                                            reference: demand.reference,
+                                            quantity: transaction.quantity
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+                if (doneDate == false) {
+                    ans[demand.date] = {
+                        demand: {},
+                        supply: {}
+                    };
+                    date = demand.date;
+                    var transactions = await Transaction.find({"$and": [{"type": "DEMAND"}, {"reference.demand": demand}]});
+                    for (let j=0; j<transactions.length; j++) {
+                        var transaction = transactions[j];
+                        var doneItem = false;
+                        var item_name = await Stationery.findById(transaction.item).select("name");
+                        for (let item in ans[date].demand) {
+                            if (item == item_name.name) {
+                                doneItem = true;
+                                ans[date].demand[item] = {
+                                    quantity: ans[date].demand[item].quantity+transaction.quantity,
+                                    transactions: [
+                                        ...ans[date].demand[item].transactions,
+                                        {
+                                            employee: demand.employee.designation,
+                                            reference: demand.reference,
+                                            quantity: transaction.quantity
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                        if (doneItem == false && demand.employee) {
+                            ans[date].demand[item_name.name] = {
+                                quantity: transaction.quantity,
+                                transactions: [
+                                    {
+                                        employee: demand.employee.designation,
+                                        reference: demand.reference,
+                                        quantity: transaction.quantity
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (let i=0; i<supplies.length; i++) {
+                var supply = supplies[i]._doc;
+                supply = {
+                    ...supply,
+                    date: format(supply.date, 'MM/dd/yyyy')
+                };
+                var doneDate = false;
+                for (let date in ans) {
+                    if (date == supply.date) {
+                        doneDate = true;
+                        var transactions = await Transaction.find({"$and": [{"type": "SUPPLY"}, {"reference.supply": supply}]});
+                        for (let j=0; j<transactions.length; j++) {
+                            var transaction = transactions[j];
+                            var doneItem = false;
+                            var item_name = await Stationery.findById(transaction.item).select("name");
+                            for (let item in ans[date].supply) {
+                                if (item == item_name.name) {
+                                    doneItem = true;
+                                    ans[date].supply[item] = {
+                                        quantity: ans[date].supply[item].quantity+transaction.quantity,
+                                        transactions: [
+                                            ...ans[date].supply[item].transactions,
+                                            {
+                                                supplier: supply.supplier.organization,
+                                                reference: supply.reference,
+                                                quantity: transaction.quantity
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                            if (doneItem == false && supply.supplier) {
+                                ans[date].supply[item_name.name] = {
+                                    quantity: transaction.quantity,
+                                    transactions: [
+                                        {
+                                            supplier: supply.supplier.organization,
+                                            reference: supply.reference,
+                                            quantity: transaction.quantity
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+                if (doneDate == false) {
+                    ans[supply.date] = {
+                        supply: {},
+                        demand: {}
+                    };
+                    date = supply.date;
+                    var transactions = await Transaction.find({"$and": [{"type": "DSUPPLY"}, {"reference.supply": supply}]});
+                    for (let j=0; j<transactions.length; j++) {
+                        var transaction = transactions[j];
+                        var doneItem = false;
+                        var item_name = await Stationery.findById(transaction.item).select("name");
+                        for (let item in ans[date].supply) {
+                            if (item == item_name.name) {
+                                doneItem = true;
+                                ans[date].supply[item] = {
+                                    quantity: ans[date].supply[item].quantity+transaction.quantity,
+                                    transactions: [
+                                        ...ans[date].supply[item].transactions,
+                                        {
+                                            supplier: supply.supplier.organization,
+                                            reference: supply.reference,
+                                            quantity: transaction.quantity
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                        if (doneItem == false && supply.supplier) {
+                            ans[date].supply[item_name.name] = {
+                                quantity: transaction.quantity,
+                                transactions: [
+                                    {
+                                        supplier: supply.supplier.organization,
+                                        reference: supply.reference,
+                                        quantity: transaction.quantity
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ans =  {
+            //     date1: {
+            //         supply: {
+            //             stationery1: {
+            //                 quantity: int,
+            //                 transactions: [
+            //                     {
+            //                         emp: emp,
+            //                         reference: reference,
+            //                         quantity: quantity,
+            //                     }
+            //                 ]
+            //             },
+            //             stationery2: {
+            //                 quantity: int,
+            //                 transactions: [
+            //                     {
+            //                         emp: emp,
+            //                         reference: reference,
+            //                         quantity: quantity,
+            //                     }
+            //                 ]
+            //             }
+            //         },
+            //         demand: {
+            //             stationery1: {
+            //                 quantity: int,
+            //                 transactions: [
+            //                     {
+            //                         supplier: supplier,
+            //                         reference: reference,
+            //                         quantity: quantity,
+            //                     }
+            //                 ]
+            //             },
+            //             stationery2: {
+            //                 quantity: int,
+            //                 transactions: [
+            //                     {
+            //                         emp: emp,
+            //                         reference: reference,
+            //                         quantity: quantity,
+            //                     }
+            //                 ]
+            //             }
+            //         }
+            //     },
+            //     date2: {
+            //         supply: {
+            //             stationery1: {
+            //                 quantity: int,
+            //                 transactions: [
+            //                     {
+            //                         emp: emp,
+            //                         reference: reference,
+            //                         quantity: quantity,
+            //                     }
+            //                 ]
+            //             },
+            //             stationery2: {
+            //                 quantity: int,
+            //                 transactions: [
+            //                     {
+            //                         emp: emp,
+            //                         reference: reference,
+            //                         quantity: quantity,
+            //                     }
+            //                 ]
+            //             }
+            //         },
+            //         demand: {}
+            //     },
+            //     date3: {
+            //         supply: {
+            //             stationery1: {
+            //                 quantity: int,
+            //                 transactions: [
+            //                     {
+            //                         emp: emp,
+            //                         reference: reference,
+            //                         quantity: quantity,
+            //                     }
+            //                 ]
+            //             },
+            //             stationery2: {
+            //                 quantity: int,
+            //                 transactions: [
+            //                     {
+            //                         emp: emp,
+            //                         reference: reference,
+            //                         quantity: quantity,
+            //                     }
+            //                 ]
+            //             }
+            //         },
+            //         demand: {}
+            //     }
+            // }
+
+            res.status(200).json({ans: ans});
+        } catch (err) {
+            console.log(err);
+            res.status(400).json({"msg": err});
+        }
     }
 });
 

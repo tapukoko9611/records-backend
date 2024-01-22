@@ -10,9 +10,13 @@ const searchStationery = async ({name}) => {
 
 router.post("/add", async (req, res) => {
     try {
-        const { name, quantity, image } = req.body;
+        var { name, quantity, image } = req.body;
+
+        if(typeof quantity == "string") {
+            quantity = parseInt(quantity);
+        }
         
-        if(quantity==0) {
+        if(quantity<0) {
             return res
                 .status(400)
                 .json({ error: 'You must enter a valid quantity' });
@@ -33,10 +37,12 @@ router.post("/add", async (req, res) => {
         const stationery = new Stationery({
             name: name.trim().toUpperCase(),
             quantity,
-            image
+            image: image===""? "https://imgs.search.brave.com/DqnON25chCTusI25nlZFXJdFdDPIr29ymmdP-NvPRGQ/rs:fit:500:0:0/g:ce/aHR0cHM6Ly9tLm1l/ZGlhLWFtYXpvbi5j/b20vaW1hZ2VzL0kv/ODFDMkZ4V24tOUwu/anBn": image,
+
         });
         registeredStationery = await stationery.save();
         res.status(200).json({
+            _id: registeredStationery._id,
             msg: "successfully added a stationery item",
             name: registeredStationery.name,
             quantity: registeredStationery.quantity,
