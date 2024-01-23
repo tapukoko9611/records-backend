@@ -464,7 +464,6 @@ router.get("/transaction", async (req, res) => {
             };
             demands[i] = demand;
         }
-        console.log(demands);
 
         var supplies = await Supply.find();
         for (let i=0; i<supplies.length; i++) {

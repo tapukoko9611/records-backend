@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
 
+const Employee = require("../../models/employee");
+const Demand = require("../../models/demand");
+const Transaction = require("../../models/transaction");
 const Stationery = require("../../models/stationery");
 
 const searchStationery = async ({name}) => {
@@ -16,11 +19,6 @@ router.post("/add", async (req, res) => {
             quantity = parseInt(quantity);
         }
         
-        if(quantity<0) {
-            return res
-                .status(400)
-                .json({ error: 'You must enter a valid quantity' });
-        }
         if(name.trim().length==0) {
             return res
                 .status(400)
@@ -59,7 +57,7 @@ router.post("/add", async (req, res) => {
     }
 });
 
-router.put("/update", async (req, res) => {
+router.put("/update:id", async (req, res) => {
     try {
         const { name, quantity, image } = req.body;
 
@@ -68,38 +66,58 @@ router.put("/update", async (req, res) => {
                 .status(400)
                 .json({ error: 'You must enter a valid item name' });
         }
-        if(quantity==0) {
-            return res
-                .status(400)
-                .json({ error: 'You must enter a valid quantity' });
-        }
 
-        var search = await searchStationery({name});
+        var search = await Stationery.findById(id);
         if(!search) {
             return res
                 .status(400)
                 .json({ error: `Item does not exist` });
         }
 
-        if(search.quantity+quantity<0) {
+        var searchName = searchStationery(name);
+        if(searchName._id != search._id) {
             return res
                 .status(400)
-                .json({ error: `Not sufficient quantity. Available: ${search.quantity}` });
+                .json({ error: `Item with that name already exists` });
         }
 
         Stationery
             .findByIdAndUpdate(
-                search._id, 
-                {quantity: search.quantity+quantity, image: image})
+                id, 
+                {name: name, quantity: quantity, image: image})
             .then(() => res.status(200).json({
                 msg: "successfully updated stationery",
-                name: search.name,
-                quantity: search.quantity+quantity,
+                name: name,
+                quantity: quantity,
                 image: image
             }))
             .catch(err => console.log(err));
     } catch (error) {
         console.log(error);
+        res.status(400).json({
+            error: `your request could not be processed at the time. Please try again: ${error}`
+        });
+    }
+});
+
+router.delete("/delete/:id", async (req, res) => {
+    try {
+        const { id } = req.body;
+
+        var stationery = await Stationery.findById(id);
+        if(!stationery) {
+            return res
+                .status(400)
+                .json({ error: 'ITem with that credential does not exist' });
+        }
+
+        await Transaction.deleteMany({item: stationery});
+ 
+        await Stationery
+            .findByIdAndDelete(id)
+            .then(() => res.status(200).json({"msg": "successfully deleted item"}))
+            .catch(err => console.log(err));
+    } catch (error) {
         res.status(400).json({
             error: `your request could not be processed at the time. Please try again: ${error}`
         });
