@@ -182,6 +182,7 @@ router.get("/employee/:id", async(req, res) => {
             var transactions = await Transaction.find({"$and": [{"type": "DEMAND", "reference.demand": demand}]}).populate("item");
             demand = {
                 ...demand,
+                employee: null,
                 transactions: transactions
             };
             demands[i] = demand;
@@ -321,6 +322,7 @@ router.get("/supplier/:id", async(req, res) => {
             var transactions = await Transaction.find({"$and": [{"type": "SUPPLY", "reference.supply": supply}]}).populate("item");
             supply = {
                 ...supply,
+                supplier: null,
                 transactions: transactions
             };
             supplies[i] = supply;
@@ -493,20 +495,31 @@ router.get("/stationery/:id", async (req, res) => {
         var supply_demands = [];
 
         for(var i=0; i<transactions.length; i++) {
-            if(transactions[i].type==="DEMAND") {
-                var demand = await Demand.findById(transactions[i].reference.demand).populate("employee");
+            var transaction = transactions[i];
+            if(transaction.type==="DEMAND") {
+                var demand = await Demand.findById(transaction.reference.demand).populate("employee");
                 // transactions[i] = {...transactions[i]._doc, demands: demand};
                 demand = {
                     ...demand,
-                    transactions: transactions
+                    transactions: [
+                        {
+                            ...transaction,
+                            item: null
+                        }
+                    ]
                 };
                 supply_demands.push(demand);
             }
-            else if(transactions.type==="SUPPLY") {
-                var supply = await Supply.findById(transactions[i].reference.supply).populate("supplier");//.select({updatedAt: 0, createdAt: 0, employee: 0, __v: 0});
+            else if(transaction.type==="SUPPLY") {
+                var supply = await Supply.findById(transaction.reference.supply).populate("supplier");//.select({updatedAt: 0, createdAt: 0, employee: 0, __v: 0});
                 supply = {
                     ...supply,
-                    transactions: transactions
+                    transactions: [
+                        {
+                            ...transaction,
+                            item: null
+                        }
+                    ]
                 };
                 supply_demands.push(supply);
             }
@@ -516,7 +529,7 @@ router.get("/stationery/:id", async (req, res) => {
     } catch (err) {
         res.status(400).json({"msg": err.message});
     }
-})
+});
 
 router.get("/stationery", async(req, res) => {
     // get list of all stationery each of it having their total no.of transactions (seperate demand and supply) (today, this week, this month, all time)

@@ -50,9 +50,10 @@ router.post("/add", async (req, res) => {
     }
 });
 
-router.put("/update:id", async (req, res) => {
+router.put("/update/:id", async (req, res) => {
     try {
         const { name, designation, identity } = req.body;
+        const {id} = req.params;
 
         if(name.trim().length==0 || designation.trim().length==0) {
             return res
@@ -68,7 +69,7 @@ router.put("/update:id", async (req, res) => {
         }
 
         var searchDesignation = await searchEmployee({designation});
-        if(searchDesignation._id != search._id) {
+        if(searchDesignation._id != id) {
             return res
                 .status(400)
                 .json({ error: 'Employee with that designation already exists' });
@@ -96,7 +97,7 @@ router.put("/update:id", async (req, res) => {
 
 router.delete("/delete/:id", async (req, res) => {
     try {
-        const { id } = req.body;
+        const { id } = req.params;
 
         var employee = await Employee.findById(id);
         if(!employee) {
@@ -114,7 +115,7 @@ router.delete("/delete/:id", async (req, res) => {
                 await Stationery
                     .findByIdAndUpdate(
                         transaction.item, 
-                        {quantity: quantity-transaction.quantity})
+                        {quantity: this.quantity-transaction.quantity})
                     .catch(err => console.log(err));
                 await Transaction.findByIdAndDelete(transaction._id);
             }

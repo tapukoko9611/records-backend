@@ -176,7 +176,7 @@ router.post("/supply", async (req, res) => {
     }
 });
 
-router.delete("/transaction/:id&:type", async (req, res) => {
+router.delete("/update/:id&:type", async (req, res) => {
     const {id, type} = req.params;
     try {
         if (type=="DEMAND") {
