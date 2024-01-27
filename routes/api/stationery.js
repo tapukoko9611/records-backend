@@ -89,10 +89,10 @@ router.put("/update/:id", async (req, res) => {
         Stationery
             .findByIdAndUpdate(
                 id, 
-                {name: name, quantity: quantity, image: image})
+                {name: name.trim().toUpperCase(), quantity: quantity, image: image})
             .then(() => res.status(200).json({
                 msg: "successfully updated stationery",
-                name: name,
+                name: name.trim().toUpperCase(),
                 quantity: quantity,
                 image: image
             }))

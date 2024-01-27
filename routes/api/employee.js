@@ -82,7 +82,7 @@ router.put("/update/:id", async (req, res) => {
                 {name: name.trim().toUpperCase(), identity: identity, designation: designation})
             .then(() => res.status(200).json({
                 "msg": "successfully updated employee",
-                "name": name,
+                "name": name.trim().toUpperCase(),
                 "designation": designation,
                 "identity": identity
             }))
