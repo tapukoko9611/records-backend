@@ -82,9 +82,9 @@ router.put("/update/:id", async (req, res) => {
                 {name: name.trim().toUpperCase(), identity: identity, designation: designation})
             .then(() => res.status(200).json({
                 "msg": "successfully updated employee",
-                name: name,
-                designation: search.designation,
-                identity: search.identity
+                "name": name,
+                "designation": designation,
+                "identity": identity
             }))
             .catch(err => console.log(err));
     } catch (error) {

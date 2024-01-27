@@ -166,7 +166,7 @@ router.get("/employee/:id", async(req, res) => {
 
     const {id} = req.params;
 
-    var employee = await Employee.findById(id);
+    var employee = await Employee.findById(id).lean();
     if(!employee) {
         console.log("Employee with that credential does not exist");
         return res
@@ -175,11 +175,11 @@ router.get("/employee/:id", async(req, res) => {
     }
     
     try {
-        var demands = await Demand.find({employee: employee});
+        var demands = await Demand.find({employee: employee}).lean();
 
         for (let i=0; i<demands.length; i++) {
-            var demand = demands[i]._doc;
-            var transactions = await Transaction.find({"$and": [{"type": "DEMAND", "reference.demand": demand}]}).populate("item");
+            var demand = demands[i];
+            var transactions = await Transaction.find({"$and": [{"type": "DEMAND", "reference.demand": demand}]}).populate("item").lean();
             demand = {
                 ...demand,
                 employee: null,
@@ -188,7 +188,7 @@ router.get("/employee/:id", async(req, res) => {
             demands[i] = demand;
         }
 
-        res.status(200).json({...employee._doc, transactions: demands});
+        res.status(200).json({...employee, transactions: demands});
     } catch (err) {
         res.status(400).json({"msg": err});
     }
@@ -197,10 +197,10 @@ router.get("/employee/:id", async(req, res) => {
 router.get("/employee", async(req, res) => {
     // get list of all employees with each of them having their total no.of transactions (today, this week, this month, all time)
     try{
-        var employees = await Employee.find();
+        var employees = await Employee.find().lean();
         // console.log(employees);
         for(var i=0; i<employees.length; i++) {
-            var demands = await Demand.find({employee: employees[i]}); 
+            var demands = await Demand.find({employee: employees[i]}).lean(); 
             // console.log(demands)
             var today=0, month=0, alltime=0, curr= new Date();
             demands.map(demand => {
@@ -209,7 +209,7 @@ router.get("/employee", async(req, res) => {
                 month += demand.date && demand.date.getMonth()===curr.getMonth()? 1: 0;
                 alltime += 1;
             });
-            employees[i] = {...employees[i]._doc, count: [today, month, alltime]};
+            employees[i] = {...employees[i], count: [today, month, alltime]};
         }
         res.status(200).json(employees);
     } catch (err) {
@@ -306,7 +306,7 @@ router.get("/supplier/:id", async(req, res) => {
 
     const {id} = req.params;
 
-    var supplier = await Supplier.findById(id);
+    var supplier = await Supplier.findById(id).lean();
     if(!supplier) {
         console.log("Supplier with that credential does not exist");
         return res
@@ -315,11 +315,11 @@ router.get("/supplier/:id", async(req, res) => {
     }
     
     try {
-        var supplies = await Supply.find({supplier: supplier});
+        var supplies = await Supply.find({supplier: supplier}).lean();
 
         for (let i=0; i<supplies.length; i++) {
-            var supply = supplies[i]._doc;
-            var transactions = await Transaction.find({"$and": [{"type": "SUPPLY", "reference.supply": supply}]}).populate("item");
+            var supply = supplies[i];
+            var transactions = await Transaction.find({"$and": [{"type": "SUPPLY", "reference.supply": supply}]}).populate("item").lean();
             supply = {
                 ...supply,
                 supplier: null,
@@ -328,7 +328,7 @@ router.get("/supplier/:id", async(req, res) => {
             supplies[i] = supply;
         }
 
-        res.status(200).json({...supplier._doc, transaction: supplies});
+        res.status(200).json({...supplier, transaction: supplies});
     } catch (err) {
         res.status(400).json({"msg": err});
     }
@@ -337,16 +337,16 @@ router.get("/supplier/:id", async(req, res) => {
 router.get("/supplier", async(req, res) => {
     // get list of all employees with each of them having their total no.of transactions (today, this week, this month, all time)
     try{
-        var suppliers = await Supplier.find();
+        var suppliers = await Supplier.find().lean();
         for(var i=0; i<suppliers.length; i++) {
-            var supplies = await Supply.find({supplier: suppliers[i]}); 
+            var supplies = await Supply.find({supplier: suppliers[i]}).lean(); 
             var today=0, month=0, alltime=0, curr= new Date();
             supplies.map(supply => {
                 today += supply.date && supply.date.getDate()===curr.getDate()? 1: 0;
                 month += supply.date && supply.date.getMonth()===curr.getMonth()? 1: 0;
                 alltime += 1;
             });
-            suppliers[i] = {...suppliers[i]._doc, count: [today, month, alltime]};
+            suppliers[i] = {...suppliers[i], count: [today, month, alltime]};
         }
         res.status(200).json(suppliers);
     } catch (err) {
@@ -490,16 +490,16 @@ router.get("/stationery/:id", async (req, res) => {
     const {id} = req.params;
 
     try {
-        var stationery = await Stationery.findById(id);
-        var transactions = await Transaction.find({item: stationery});
+        var stationery = await Stationery.findById(id).lean();
+        var transactions = await Transaction.find({item: stationery}).lean();
         var supply_demands = [];
 
         for(var i=0; i<transactions.length; i++) {
             var transaction = transactions[i];
             if(transaction.type==="DEMAND") {
-                var demand = await Demand.findById(transaction.reference.demand).populate("employee");
+                var demand = await Demand.findById(transaction.reference.demand).populate("employee").lean();
                 // transactions[i] = {...transactions[i]._doc, demands: demand};
-                demand = {
+                supply_demands.push({
                     ...demand,
                     transactions: [
                         {
@@ -507,12 +507,11 @@ router.get("/stationery/:id", async (req, res) => {
                             item: null
                         }
                     ]
-                };
-                supply_demands.push(demand);
+                });
             }
             else if(transaction.type==="SUPPLY") {
-                var supply = await Supply.findById(transaction.reference.supply).populate("supplier");//.select({updatedAt: 0, createdAt: 0, employee: 0, __v: 0});
-                supply = {
+                var supply = await Supply.findById(transaction.reference.supply).populate("supplier").lean();//.select({updatedAt: 0, createdAt: 0, employee: 0, __v: 0});
+                supply_demands.push({
                     ...supply,
                     transactions: [
                         {
@@ -520,13 +519,12 @@ router.get("/stationery/:id", async (req, res) => {
                             item: null
                         }
                     ]
-                };
-                supply_demands.push(supply);
+                });
             }
         }
-
-        res.status(200).json({...stationery._doc, transaction: transactions});
+        res.status(200).json({...stationery, transactions: supply_demands});
     } catch (err) {
+        console.log(err);
         res.status(400).json({"msg": err.message});
     }
 });
@@ -534,11 +532,10 @@ router.get("/stationery/:id", async (req, res) => {
 router.get("/stationery", async(req, res) => {
     // get list of all stationery each of it having their total no.of transactions (seperate demand and supply) (today, this week, this month, all time)
     try{
-        var stationery = await Stationery.find();
+        var stationery = await Stationery.find().lean();
         // console.log(stationery);
         for(var i=0; i<stationery.length; i++) {
-            var transactions = await Transaction.find({item: stationery[i]}).populate("reference.demand reference.supply", "date");
-            // console.log(transactions);
+            var transactions = await Transaction.find({item: stationery[i]}).populate("reference.demand reference.supply", "date").lean();
             var supply = [0, 0, 0], demand = [0, 0, 0], curr= new Date();
             transactions.map(transaction => {
                 // console.log(transaction);
@@ -553,7 +550,7 @@ router.get("/stationery", async(req, res) => {
                     supply[2] += transaction.quantity;
                 }
             });
-            stationery[i] = {...stationery[i]._doc, demand: demand, supply: supply};
+            stationery[i] = {...stationery[i], demand: demand, supply: supply};
         }
         res.status(200).json(stationery);
     } catch (err) {
@@ -1188,11 +1185,11 @@ router.get("/stationery", async(req, res) => {
 
 router.get("/transaction", async (req, res) => {
     try {
-        var demands = await Demand.find();
+        var demands = await Demand.find().lean();
         for (let i=0; i<demands.length; i++) {
-            var demand = demands[i]._doc;
-            var transactions = await Transaction.find({"$and": [{"type": "DEMAND", "reference.demand": demand}]}).populate("item");
-            var employee = await Employee.findById(demand.employee);
+            var demand = demands[i];//._doc;
+            var transactions = await Transaction.find({"$and": [{"type": "DEMAND", "reference.demand": demand}]}).populate("item").lean();
+            var employee = await Employee.findById(demand.employee).lean();
             demand = {
                 ...demand,
                 employee: employee,
@@ -1201,11 +1198,11 @@ router.get("/transaction", async (req, res) => {
             demands[i] = demand;
         }
 
-        var supplies = await Supply.find();
+        var supplies = await Supply.find().lean();
         for (let i=0; i<supplies.length; i++) {
-            var supply = supplies[i]._doc;
-            var transactions = await Transaction.find({"$and": [{"type": "SUPPLY", "reference.supply": supply}]}).populate("item");
-            var supplier = await Supplier.findById(supply.supplier);
+            var supply = supplies[i];//._doc;
+            var transactions = await Transaction.find({"$and": [{"type": "SUPPLY", "reference.supply": supply}]}).populate("item").lean();
+            var supplier = await Supplier.findById(supply.supplier).lean();
             supply = {
                 ...supply,
                 supplier: supplier,

@@ -27,12 +27,12 @@ const handleTransaction = async ({item, type, reference}) => {
     const {name, quantity, remarks} = item;
     
     if(name.trim().length==0) {
-        throw new Error("You must enter a valid item");
+        return({"message": "Enter a valid item name"});;
     }
 
     var search = await searchStationery({name});
     if(!search) {
-        if(type==="DEMAND") return("Item does not exist");
+        if(type==="DEMAND") return({"message": "Item does not exist"});
         if(type==="SUPPLY") {
             const stationery = new Stationery({
                 name: name.trim().toUpperCase(),
@@ -68,9 +68,9 @@ const handleTransaction = async ({item, type, reference}) => {
     // await Stationery.findByIdAndUpdate(search._id, {quantity: search.quantity+quantity});
     search.quantity = search.quantity+quantity;
     await search.save();
-    await Transaction.create({item: search, quantity: quantity, type: type, reference: reference, remarks: remarks});
-
-    return "SUCCESSFUL";
+    var transaction = new Transaction({item: search, quantity: quantity, type: type, reference: reference, remarks: remarks});
+    await transaction.save();
+    return {"message": "SUCCESSFUL", "transaction": transaction};
 };
 
 router.post("/demand", async (req, res) => {
@@ -98,14 +98,17 @@ router.post("/demand", async (req, res) => {
             supply: null
         }
         type = "DEMAND";
+        var transactions = [];
 
         for(item of list) {
             var result = await handleTransaction({item, type, reference: ref});
-            if (result !== "SUCCESSFUL") {
-                throw new Error(result);
-            } 
+            if (result["message"] !== "SUCCESSFUL") {
+                throw new Error(result["message"]);
+            } else {
+                transactions.push(result["transaction"]);
+            }
         }
-        res.status(200).json({...registerDemand._doc, "msg": "Successful demand transaction"});
+        res.status(200).json({...registerDemand._doc, "transactions": transactions, "msg": "Successful demand transaction"});
 
         // const ret = await handleTransactions({list, type, reference: ref});
         // console.log(ret);

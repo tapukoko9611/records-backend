@@ -35,7 +35,7 @@ router.post("/add", async (req, res) => {
         const stationery = new Stationery({
             name: name.trim().toUpperCase(),
             quantity,
-            image: image===""? "https://imgs.search.brave.com/DqnON25chCTusI25nlZFXJdFdDPIr29ymmdP-NvPRGQ/rs:fit:500:0:0/g:ce/aHR0cHM6Ly9tLm1l/ZGlhLWFtYXpvbi5j/b20vaW1hZ2VzL0kv/ODFDMkZ4V24tOUwu/anBn": image,
+            image: image.trim().length==0? "https://imgs.search.brave.com/DqnON25chCTusI25nlZFXJdFdDPIr29ymmdP-NvPRGQ/rs:fit:500:0:0/g:ce/aHR0cHM6Ly9tLm1l/ZGlhLWFtYXpvbi5j/b20vaW1hZ2VzL0kv/ODFDMkZ4V24tOUwu/anBn": image,
 
         });
         registeredStationery = await stationery.save();
@@ -57,9 +57,14 @@ router.post("/add", async (req, res) => {
     }
 });
 
-router.put("/update:id", async (req, res) => {
+router.put("/update/:id", async (req, res) => {
     try {
-        const { name, quantity, image } = req.body;
+        var { name, quantity, image } = req.body;
+        const  {id} = req.params;
+
+        if(typeof quantity == "string") {
+            quantity = parseInt(quantity);
+        }
 
         if(name.trim().length==0) {
             return res
@@ -74,8 +79,8 @@ router.put("/update:id", async (req, res) => {
                 .json({ error: `Item does not exist` });
         }
 
-        var searchName = searchStationery(name);
-        if(searchName._id != search._id) {
+        var searchName = await searchStationery({name});
+        if(searchName._id != id) {
             return res
                 .status(400)
                 .json({ error: `Item with that name already exists` });
@@ -102,7 +107,7 @@ router.put("/update:id", async (req, res) => {
 
 router.delete("/delete/:id", async (req, res) => {
     try {
-        const { id } = req.body;
+        const { id } = req.params;
 
         var stationery = await Stationery.findById(id);
         if(!stationery) {
