@@ -7,7 +7,7 @@ const Transaction = require("../../models/transaction");
 const Stationery = require("../../models/stationery");
 
 const searchStationery = async ({name}) => {
-    const search = await Stationery.findOne({name: name.trim().toUpperCase()});
+    const search = await Stationery.findOne({name: name.trim().toUpperCase()}).lean();
     return search;
 };
 

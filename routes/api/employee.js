@@ -7,7 +7,7 @@ const Transaction = require("../../models/transaction");
 const Stationery = require("../../models/stationery");
 
 const searchEmployee = async ({designation}) => {
-    const search = await Employee.findOne({designation: designation.trim().toUpperCase()});
+    const search = await Employee.findOne({designation: designation.trim().toUpperCase()}).lean();
     return search;
 };
 
