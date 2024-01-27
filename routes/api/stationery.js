@@ -80,7 +80,7 @@ router.put("/update/:id", async (req, res) => {
         }
 
         var searchName = await searchStationery({name});
-        if(searchName._id != id) {
+        if(searchName && searchName._id != id) {
             return res
                 .status(400)
                 .json({ error: `Item with that name already exists` });

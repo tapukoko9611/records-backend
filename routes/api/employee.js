@@ -69,7 +69,7 @@ router.put("/update/:id", async (req, res) => {
         }
 
         var searchDesignation = await searchEmployee({designation});
-        if(searchDesignation._id != id) {
+        if(searchDesignation && searchDesignation._id != id) {
             return res
                 .status(400)
                 .json({ error: 'Employee with that designation already exists' });
