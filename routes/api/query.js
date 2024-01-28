@@ -1211,9 +1211,13 @@ router.get("/transaction", async (req, res) => {
             supplies[i] = supply;
         }
 
+        var employees = await Employee.find().lean();
+        var suppliers = await Supplier.find().lean();
+        var stationery = await Stationery.find().lean();
+
         // console.log([...demands, ...supplies]);
 
-        return res.status(200).json([...demands, ...supplies]);
+        return res.status(200).json({"transactions": [...demands, ...supplies], "employees": employees, "stationery": stationery, "suppliers": suppliers});
     } catch (err) {
         res.status(400).json({"msg": err.message});
     }

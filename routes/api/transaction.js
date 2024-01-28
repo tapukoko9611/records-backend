@@ -152,7 +152,7 @@ router.post("/supply", async (req, res) => {
             image: image,
             price: price,
             reference: reference,
-            date: date && date!=""? date: Date.now(),
+            date: date && date!=""? new Date(date): Date.now(),
             remarks: remarks
         });
         var registerSupply = await supply.save();
@@ -163,13 +163,15 @@ router.post("/supply", async (req, res) => {
         }
         type = "SUPPLY";
 
+        var transactions = [];
         for(item of list) {
             var result = await handleTransaction({item, type, reference: ref});
-            if (result !== "SUCCESSFUL") {
-                throw new Error(result);
+            if (result["message"]!="SUCCESSFUL") {
+                throw new Error(result["message"]);
             } 
+            transactions.push(result["transaction"]);
         }
-        res.status(200).json({...registerSupply._doc, "msg": "Successful supply transaction"});
+        res.status(200).json({...registerSupply._doc, "transactions": transactions,  "msg": "Successful supply transaction"});
 
     } catch (error) {
         console.log(error);
