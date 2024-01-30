@@ -14,12 +14,12 @@ const searchStationery = async ({name}) => {
 };
 
 const searchEmployee = async ({designation}) => {
-    const search = await Employee.findOne({designation: designation.trim().toUpperCase()});
+    const search = await Employee.findOne({designation: designation.trim().toUpperCase()}).lean();
     return search;
 };
 
 const searchSupplier = async ({organization}) => {
-    const search = await Supplier.findOne({organization: organization.trim().toUpperCase()});
+    const search = await Supplier.findOne({organization: organization.trim().toUpperCase()}).lean();
     return search;
 };
 
@@ -77,7 +77,7 @@ router.post("/demand", async (req, res) => {
     try {
         const { employee, reference, list, image, date, remarks } = req.body;
 
-        var emp = await Employee.findById(employee);
+        var emp = await searchEmployee({designation: employee});
         if(!emp) {
             return res
                 .status(400)
