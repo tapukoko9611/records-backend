@@ -67,10 +67,10 @@ const handleTransaction = async ({item, type, reference}) => {
     //     .catch(err => console.log(`err at stationery: ${err}`));
     // await Stationery.findByIdAndUpdate(search._id, {quantity: search.quantity+quantity});
     search.quantity = search.quantity+quantity;
-    await search.save();
+    await search.save(); // if search = search._doc, this method would not work
     var transaction = new Transaction({item: search, quantity: quantity, type: type, reference: reference, remarks: remarks});
     await transaction.save();
-    return {"message": "SUCCESSFUL", "transaction": transaction};
+    return {"message": "SUCCESSFUL", "transaction": {...transaction._doc, item: search._doc, reference: {supply: transaction._doc.reference.supply? transaction._doc.reference.supply._id: null, demand: transaction._doc.reference.demand? transaction._doc.reference.demand._id: null}}};
 };
 
 router.post("/demand", async (req, res) => {
@@ -88,7 +88,7 @@ router.post("/demand", async (req, res) => {
             employee: emp,
             image: image,
             reference: reference,
-            date: date && date!=""? date: Date.now(),
+            date: date && date!=""? Date.parse(date): Date.now(),
             remarks: remarks
         });
         registerDemand = await demand.save();
@@ -108,7 +108,7 @@ router.post("/demand", async (req, res) => {
                 transactions.push(result["transaction"]);
             }
         }
-        res.status(200).json({...registerDemand._doc, "transactions": transactions, "msg": "Successful demand transaction"});
+        res.status(200).json({...registerDemand._doc, employee: emp, "transactions": transactions, "msg": "Successful demand transaction"});
 
         // const ret = await handleTransactions({list, type, reference: ref});
         // console.log(ret);
@@ -135,20 +135,20 @@ router.post("/demand", async (req, res) => {
 
 router.post("/supply", async (req, res) => {
     try {
-        const { organization, reference, list, image, price, date, remarks } = req.body;
+        const { supplier, reference, list, image, price, date, remarks } = req.body;
 
-        var supplier = await searchSupplier({organization});
-        if(!supplier) {
+        var supplierInfo = await searchSupplier({organization: supplier});
+        if(!supplierInfo) {
             sup = new Supplier({
-                name: organization.trim().toUpperCase(),
-                organization: organization.trim().toUpperCase()
+                name: supplier.trim().toUpperCase(),
+                organization: supplier.trim().toUpperCase()
             });
             var registerSupplier = await sup.save();
-            supplier = registerSupplier;
+            supplierInfo = registerSupplier;
         }
 
         const supply = new Supply({
-            supplier: supplier,
+            supplier: supplierInfo,
             image: image,
             price: price,
             reference: reference,
@@ -171,7 +171,7 @@ router.post("/supply", async (req, res) => {
             } 
             transactions.push(result["transaction"]);
         }
-        res.status(200).json({...registerSupply._doc, "transactions": transactions,  "msg": "Successful supply transaction"});
+        res.status(200).json({...registerSupply._doc, supplier: supplierInfo, "transactions": transactions,  "msg": "Successful supply transaction"});
 
     } catch (error) {
         console.log(error);
